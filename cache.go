@@ -2,12 +2,11 @@ package cushion
 
 import (
 	"context"
-	"sync"
 	"time"
 )
 
 type Cache[K comparable, V any] struct {
-	mu sync.Mutex
+	mu *MutexWithKey[K]
 	cacheConfig[K, V]
 }
 
@@ -36,13 +35,14 @@ func New[K comparable, V any](fetchFunc FetchFunc[K, V], opts ...CacheOption[K, 
 	}
 
 	return Cache[K, V]{
+		mu:          NewMutexWithKey[K](),
 		cacheConfig: config,
 	}
 }
 
 func (c *Cache[K, V]) Get(ctx context.Context, k K) (V, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.mu.Lock(k)
+	defer c.mu.Unlock(k)
 	if v, exists := c.values[k]; exists {
 		if time.Since(v.stored) < c.expire {
 			return v.v, nil
