@@ -2,6 +2,7 @@ package cushion
 
 import (
 	"context"
+	"sync"
 	"time"
 )
 
@@ -13,7 +14,7 @@ type Cache[K comparable, V any] struct {
 type cacheConfig[K comparable, V any] struct {
 	expire time.Duration
 	fetch  FetchFunc[K, V]
-	values map[K]Value[V]
+	values sync.Map
 }
 
 type FetchFunc[K comparable, V any] func(context.Context, K) (V, error)
@@ -27,7 +28,7 @@ func New[K comparable, V any](fetchFunc FetchFunc[K, V], opts ...CacheOption[K, 
 	config := cacheConfig[K, V]{
 		expire: 5 * time.Minute,
 		fetch:  fetchFunc,
-		values: make(map[K]Value[V]),
+		//values: sync.Map{},
 	}
 
 	for _, opt := range opts {
@@ -43,9 +44,11 @@ func New[K comparable, V any](fetchFunc FetchFunc[K, V], opts ...CacheOption[K, 
 func (c *Cache[K, V]) Get(ctx context.Context, k K) (V, error) {
 	c.mu.Lock(k)
 	defer c.mu.Unlock(k)
-	if v, exists := c.values[k]; exists {
-		if time.Since(v.stored) < c.expire {
-			return v.v, nil
+	if v, exists := c.values.Load(k); exists {
+		if v, ok := v.(Value[V]); ok {
+			if time.Since(v.stored) < c.expire {
+				return v.v, nil
+			}
 		}
 	}
 
@@ -55,7 +58,7 @@ func (c *Cache[K, V]) Get(ctx context.Context, k K) (V, error) {
 	if err != nil {
 		return v, err
 	}
-	c.values[k] = Value[V]{v: v, stored: stored}
+	c.values.Store(k, Value[V]{v: v, stored: stored})
 	return v, err
 }
 
@@ -70,7 +73,9 @@ func WithExpiration[K comparable, V any](expire time.Duration) CacheOption[K, V]
 
 func WithInitialValues[K comparable, V any](values map[K]Value[V]) CacheOption[K, V] {
 	return func(c *cacheConfig[K, V]) cacheConfig[K, V] {
-		c.values = values
+		for k, v := range values {
+			c.values.Store(k, v)
+		}
 		return *c
 	}
 }
