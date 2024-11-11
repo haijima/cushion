@@ -8,7 +8,7 @@ import (
 
 type Cache[K comparable, V any] struct {
 	mu *MutexWithKey[K]
-	cacheConfig[K, V]
+	*cacheConfig[K, V]
 }
 
 type cacheConfig[K comparable, V any] struct {
@@ -25,14 +25,13 @@ type Value[V any] struct {
 }
 
 func New[K comparable, V any](fetchFunc FetchFunc[K, V], opts ...CacheOption[K, V]) Cache[K, V] {
-	config := cacheConfig[K, V]{
+	config := &cacheConfig[K, V]{
 		expire: 5 * time.Minute,
 		fetch:  fetchFunc,
-		//values: sync.Map{},
 	}
 
 	for _, opt := range opts {
-		config = opt(&config)
+		config = opt(config)
 	}
 
 	return Cache[K, V]{
@@ -62,20 +61,20 @@ func (c *Cache[K, V]) Get(ctx context.Context, k K) (V, error) {
 	return v, err
 }
 
-type CacheOption[K comparable, V any] func(*cacheConfig[K, V]) cacheConfig[K, V]
+type CacheOption[K comparable, V any] func(*cacheConfig[K, V]) *cacheConfig[K, V]
 
 func WithExpiration[K comparable, V any](expire time.Duration) CacheOption[K, V] {
-	return func(c *cacheConfig[K, V]) cacheConfig[K, V] {
+	return func(c *cacheConfig[K, V]) *cacheConfig[K, V] {
 		c.expire = expire
-		return *c
+		return c
 	}
 }
 
 func WithInitialValues[K comparable, V any](values map[K]Value[V]) CacheOption[K, V] {
-	return func(c *cacheConfig[K, V]) cacheConfig[K, V] {
+	return func(c *cacheConfig[K, V]) *cacheConfig[K, V] {
 		for k, v := range values {
 			c.values.Store(k, v)
 		}
-		return *c
+		return c
 	}
 }
