@@ -14,8 +14,7 @@ import (
 
 func TestCache_Get(t *testing.T) {
 	mu := &sync.Mutex{}
-	data := make(map[int]int)
-	data = map[int]int{1: 1, 2: 2}
+	data := map[int]int{1: 1, 2: 2}
 
 	notFound := errors.New("not found")
 	c := cushion.New(func(_ context.Context, k int) (int, error) {
