@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/haijima/cushion"
-	"github.com/stretchr/testify/assert"
 )
 
 type counter struct {
@@ -46,8 +45,12 @@ func TestZTC_DoDelay_inDelayedDuration(t *testing.T) {
 	wg.Wait()
 
 	elapsed := time.Since(start)
-	assert.Equal(t, 1, c.Count())
-	assert.Less(t, elapsed.Microseconds(), int64(105*1000)) // 100ms + buffer
+	if c.Count() != 1 {
+		t.Errorf("expected 1, but got %d", c.Count())
+	}
+	if elapsed.Microseconds() >= 105*1000 { // 100ms + buffer
+		t.Errorf("expected less than 105ms, but got %d", elapsed.Microseconds())
+	}
 }
 
 func TestZTC_DoDelay_notInDelayedDuration(t *testing.T) {
@@ -70,7 +73,13 @@ func TestZTC_DoDelay_notInDelayedDuration(t *testing.T) {
 	wg.Wait()
 
 	elapsed := time.Since(start)
-	assert.Equal(t, 2, c.Count())
-	assert.Less(t, elapsed.Microseconds(), int64(305*1000))    // 300ms + buffer
-	assert.Greater(t, elapsed.Microseconds(), int64(295*1000)) // 300ms - buffer
+	if c.Count() != 2 {
+		t.Errorf("expected 2, but got %d", c.Count())
+	}
+	if elapsed.Microseconds() >= 305*1000 { // 300ms + buffer
+		t.Errorf("expected less than 305ms, but got %d", elapsed.Microseconds())
+	}
+	if elapsed.Microseconds() <= 295*1000 { // 300ms - buffer
+		t.Errorf("expected more than 295ms, but got %d", elapsed.Microseconds())
+	}
 }

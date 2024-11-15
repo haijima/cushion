@@ -8,8 +8,6 @@ import (
 	"time"
 
 	"github.com/haijima/cushion"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestCache_Get(t *testing.T) {
@@ -35,19 +33,29 @@ func TestCache_Get(t *testing.T) {
 		wg.Add(3)
 		go func() {
 			get, err := c.Get(ctx, 1)
-			require.NoError(t, err)
-			assert.Equal(t, 1, get)
+			if err != nil {
+				t.Errorf("unexpected error: %+v", err)
+			}
+			if get != 1 {
+				t.Errorf("expected 1, but got %d", get)
+			}
 			wg.Done()
 		}()
 		go func() {
 			get, err := c.Get(ctx, 2)
-			require.NoError(t, err)
-			assert.Equal(t, 2, get)
+			if err != nil {
+				t.Errorf("unexpected error: %+v", err)
+			}
+			if get != 2 {
+				t.Errorf("expected 2, but got %d", get)
+			}
 			wg.Done()
 		}()
 		go func() {
 			_, err := c.Get(ctx, 3)
-			assert.Equal(t, notFound, err)
+			if !errors.Is(err, notFound) {
+				t.Errorf("expected not found error, but got %+v", err)
+			}
 			wg.Done()
 		}()
 	}
@@ -59,19 +67,29 @@ func TestCache_Get(t *testing.T) {
 		wg.Add(3)
 		go func() {
 			get, err := c.Get(ctx, 1)
-			require.NoError(t, err)
-			assert.Equal(t, 2, get)
+			if err != nil {
+				t.Errorf("unexpected error: %+v", err)
+			}
+			if get != 2 {
+				t.Errorf("expected 2, but got %d", get)
+			}
 			wg.Done()
 		}()
 		go func() {
 			get, err := c.Get(ctx, 2)
-			require.NoError(t, err)
-			assert.Equal(t, 3, get)
+			if err != nil {
+				t.Errorf("unexpected error: %+v", err)
+			}
+			if get != 3 {
+				t.Errorf("expected 3, but got %d", get)
+			}
 			wg.Done()
 		}()
 		go func() {
 			_, err := c.Get(ctx, 3)
-			assert.Equal(t, notFound, err)
+			if !errors.Is(err, notFound) {
+				t.Errorf("expected not found error, but got %+v", err)
+			}
 			wg.Done()
 		}()
 	}
