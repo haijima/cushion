@@ -96,3 +96,31 @@ func TestCache_Get(t *testing.T) {
 
 	wg.Wait()
 }
+
+func TestCache_ParallelFetch(t *testing.T) {
+	c := cushion.New(func(_ context.Context, k int) (int, error) {
+		time.Sleep(50 * time.Millisecond)
+		return k, nil
+	})
+
+	ctx := context.Background()
+	wg := &sync.WaitGroup{}
+
+	start := time.Now()
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			_, _ = c.Get(ctx, 1)
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+	elapsed := time.Since(start)
+
+	if elapsed.Microseconds() >= 55*1000 { // 50ms + buffer
+		t.Errorf("expected less than 55ms, but got %d", elapsed.Microseconds())
+	}
+	if elapsed.Microseconds() <= 45*1000 { // 50ms - buffer
+		t.Errorf("expected more than 45ms, but got %d", elapsed.Microseconds())
+	}
+}
