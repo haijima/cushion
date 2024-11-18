@@ -24,22 +24,18 @@ type Value[V any] struct {
 	stored time.Time
 }
 
-func New[K comparable, V any](fetchFunc FetchFunc[K, V], opts ...CacheOption[K, V]) Cache[K, V] {
-	config := &cacheConfig[K, V]{
-		expire: 5 * time.Minute,
-		fetch:  fetchFunc,
-	}
-
-	for _, opt := range opts {
-		config = opt(config)
-	}
-
+func New[K comparable, V any](fetchFunc FetchFunc[K, V], expiration time.Duration) Cache[K, V] {
 	return Cache[K, V]{
-		mu:          NewMutexWithKey[K](),
-		cacheConfig: config,
+		mu: NewMutexWithKey[K](),
+		cacheConfig: &cacheConfig[K, V]{
+			expire: expiration,
+			fetch:  fetchFunc,
+		},
 	}
 }
 
+// Get returns the value from the cache if exists and not expired.
+// If not exists or expired, it fetches the value by the fetch function.
 func (c *Cache[K, V]) Get(ctx context.Context, k K) (V, error) {
 	c.mu.Lock(k)
 	defer c.mu.Unlock(k)
@@ -61,20 +57,13 @@ func (c *Cache[K, V]) Get(ctx context.Context, k K) (V, error) {
 	return v, err
 }
 
-type CacheOption[K comparable, V any] func(*cacheConfig[K, V]) *cacheConfig[K, V]
-
-func WithExpiration[K comparable, V any](expire time.Duration) CacheOption[K, V] {
-	return func(c *cacheConfig[K, V]) *cacheConfig[K, V] {
-		c.expire = expire
-		return c
-	}
+// Warmup stores the value in advance.
+func (c *Cache[K, V]) Warmup(k K, v V) {
+	c.mu.Lock(k)
+	defer c.mu.Unlock(k)
+	c.values.Store(k, Value[V]{v: v, stored: time.Now()})
 }
 
-func WithInitialValues[K comparable, V any](values map[K]Value[V]) CacheOption[K, V] {
-	return func(c *cacheConfig[K, V]) *cacheConfig[K, V] {
-		for k, v := range values {
-			c.values.Store(k, v)
-		}
-		return c
-	}
+func (c *Cache[K, V]) Clear() {
+	c.values.Clear()
 }

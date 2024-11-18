@@ -3,12 +3,40 @@ package cushion_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/haijima/cushion"
 )
+
+func ExampleCache() {
+	cnt := atomic.Int32{}
+	var heavyFunc = func(_ context.Context, k int) (int, error) {
+		// heavy operation
+		time.Sleep(10 * time.Millisecond)
+		cnt.Add(1)
+		return k, nil
+	}
+	c := cushion.New(heavyFunc, 50*time.Millisecond)
+	ctx := context.Background()
+	wg := &sync.WaitGroup{}
+
+	// 10 goroutines try to get the same key
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func(ctx context.Context) {
+			_, _ = c.Get(ctx, 1)
+			wg.Done()
+		}(ctx)
+	}
+	wg.Wait()
+
+	fmt.Println(cnt.Load()) // heavyFunc is called only once
+	// Output: 1
+}
 
 func TestCache_Get(t *testing.T) {
 	mu := &sync.Mutex{}
@@ -24,7 +52,7 @@ func TestCache_Get(t *testing.T) {
 			return res, nil
 		}
 		return 0, notFound
-	}, cushion.WithExpiration[int, int](100*time.Millisecond))
+	}, 100*time.Millisecond)
 
 	ctx := context.Background()
 	wg := &sync.WaitGroup{}
@@ -101,7 +129,7 @@ func TestCache_ParallelFetch(t *testing.T) {
 	c := cushion.New(func(_ context.Context, k int) (int, error) {
 		time.Sleep(50 * time.Millisecond)
 		return k, nil
-	})
+	}, 100*time.Millisecond)
 
 	ctx := context.Background()
 	wg := &sync.WaitGroup{}
