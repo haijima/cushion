@@ -7,7 +7,8 @@ import (
 )
 
 type Cache[K comparable, V any] struct {
-	mu *MutexWithKey[K]
+	mu    *MutexWithKey[K]
+	stats Stats
 	*cacheConfig[K, V]
 }
 
@@ -42,12 +43,14 @@ func (c *Cache[K, V]) Get(ctx context.Context, k K) (V, error) {
 	if v, exists := c.values.Load(k); exists {
 		if v, ok := v.(Value[V]); ok {
 			if time.Since(v.stored) < c.expire {
+				c.stats.Hit()
 				return v.v, nil
 			}
 		}
 	}
 
 	// not exists or expired
+	c.stats.Miss()
 	stored := time.Now()
 	v, err := c.fetch(context.WithoutCancel(ctx), k)
 	if err != nil {
@@ -66,4 +69,13 @@ func (c *Cache[K, V]) Warmup(k K, v V) {
 
 func (c *Cache[K, V]) Clear() {
 	c.values.Clear()
+	c.stats.Reset()
+}
+
+func (c *Cache[K, V]) Stats() string {
+	return c.stats.String()
+}
+
+func (c *Cache[K, V]) HitRate() float64 {
+	return c.stats.HitRate()
 }
