@@ -5,4 +5,28 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/haijima/cushion.svg)](https://pkg.go.dev/github.com/haijima/cushion)
 [![Go report](https://goreportcard.com/badge/github.com/haijima/cushion)](https://goreportcard.com/report/github.com/haijima/cushion)
 
-A simple read-through cache library for Go.
+Cushion is a simple read-through cache library for Go.
+
+## How to use
+
+Example of using cushion with `database/sql`.
+
+```go
+var db *sql.DB
+var user = cushion.New(func(ctx context.Context, id int64) (user User, err error) {
+	err = db.GetContext(ctx, &user, "SELECT * FROM users WHERE id = ?", id)
+	return
+}, 5*time.Minute)
+
+func initialize() {
+	// When to clear cache
+	userCache.Clear()
+}
+
+func getUser(ctx context.Context) {
+    // Get the value from the cache if exists and not expired.
+    // If not exists or expired, it fetches the value from Database.
+    user, err := userCache.Get(ctx, 1)
+    // ...
+}
+```
