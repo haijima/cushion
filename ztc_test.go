@@ -10,22 +10,13 @@ import (
 )
 
 type counter struct {
-	count int
+	Count int
 }
 
 func (c *counter) Inc(_ context.Context) (int, error) {
-	c.count++
-	return c.count, nil
-}
-
-func (c *counter) HeavyInc(_ context.Context) (int, error) {
 	time.Sleep(50 * time.Millisecond)
-	c.count++
-	return c.count, nil
-}
-
-func (c *counter) Count() int {
-	return c.count
+	c.Count++
+	return c.Count, nil
 }
 
 func TestZTC_DoDelay_inDelayedDuration(t *testing.T) {
@@ -45,11 +36,11 @@ func TestZTC_DoDelay_inDelayedDuration(t *testing.T) {
 	wg.Wait()
 
 	elapsed := time.Since(start)
-	if c.Count() != 1 {
-		t.Errorf("expected 1, but got %d", c.Count())
+	if c.Count != 1 {
+		t.Errorf("expected 1, but got %d", c.Count)
 	}
-	if elapsed.Microseconds() >= 105*1000 { // 100ms + buffer
-		t.Errorf("expected less than 105ms, but got %d", elapsed.Microseconds())
+	if elapsed.Microseconds() >= 155*1000 { // 150ms + buffer
+		t.Errorf("expected less than 155ms, but got %d", elapsed.Microseconds())
 	}
 }
 
@@ -62,19 +53,19 @@ func TestZTC_DoDelay_notInDelayedDuration(t *testing.T) {
 	start := time.Now()
 	wg.Add(2)
 	go func(ctx context.Context) {
-		_, _ = ztc.DoDelay(ctx, 100*time.Millisecond, c.HeavyInc)
+		_, _ = ztc.DoDelay(ctx, 100*time.Millisecond, c.Inc)
 		wg.Done()
 	}(ctx)
-	time.Sleep(110 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	go func(ctx context.Context) {
-		_, _ = ztc.DoDelay(ctx, 100*time.Millisecond, c.HeavyInc)
+		_, _ = ztc.DoDelay(ctx, 100*time.Millisecond, c.Inc)
 		wg.Done()
 	}(ctx)
 	wg.Wait()
 
 	elapsed := time.Since(start)
-	if c.Count() != 2 {
-		t.Errorf("expected 2, but got %d", c.Count())
+	if c.Count != 2 {
+		t.Errorf("expected 2, but got %d", c.Count)
 	}
 	if elapsed.Microseconds() >= 305*1000 { // 300ms + buffer
 		t.Errorf("expected less than 305ms, but got %d", elapsed.Microseconds())
