@@ -67,6 +67,7 @@ func (c *Cache[K, V]) Warmup(k K, v V) {
 	c.values.Store(k, Value[V]{v: v, stored: time.Now()})
 }
 
+// Clear removes all values from the cache and resets the statistics.
 func (c *Cache[K, V]) Clear() {
 	c.values.Clear()
 	c.stats.Reset()
