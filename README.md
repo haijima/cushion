@@ -13,10 +13,15 @@ Example of using cushion with `database/sql`.
 
 ```go
 var db *sql.DB
-var user = cushion.New(func(ctx context.Context, id int64) (user User, err error) {
-	err = db.GetContext(ctx, &user, "SELECT * FROM users WHERE id = ?", id)
-	return
-}, 5*time.Minute)
+var userCache = cushion.New(
+    // fetch function
+    func(ctx context.Context, id int64) (user User, err error) {
+        err = db.GetContext(ctx, &user, "SELECT * FROM users WHERE id = ?", id)
+        return
+    },
+    // expiration
+    5*time.Minute,
+)
 
 func initialize() {
 	// When to clear cache
