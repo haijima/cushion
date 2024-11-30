@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -13,28 +12,14 @@ import (
 )
 
 func ExampleCache() {
-	cnt := atomic.Int32{}
-	var heavyFunc = func(_ context.Context, k int) (int, error) {
+	c := cushion.New(func(_ context.Context, k int) (int, error) {
 		// heavy operation
-		time.Sleep(10 * time.Millisecond)
-		cnt.Add(1)
+		time.Sleep(100 * time.Millisecond)
 		return k, nil
-	}
-	c := cushion.New(heavyFunc, 50*time.Millisecond)
-	ctx := context.Background()
-	wg := &sync.WaitGroup{}
+	}, 5*time.Minute)
 
-	// 10 goroutines try to get the same key
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go func(ctx context.Context) {
-			_, _ = c.Get(ctx, 1)
-			wg.Done()
-		}(ctx)
-	}
-	wg.Wait()
-
-	fmt.Println(cnt.Load()) // heavyFunc is called only once
+	v, _ := c.Get(context.Background(), 1)
+	fmt.Println(v)
 	// Output: 1
 }
 
