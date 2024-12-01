@@ -7,6 +7,14 @@
 
 Cushion is a simple read-through cache library for Go.
 
+## Installation
+
+You can install cushion using the following command:
+
+``` sh
+go get github.com/haijima/cushion@latest
+```
+
 ## How to use
 
 Example of using cushion with `database/sql`.
