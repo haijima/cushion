@@ -17,7 +17,7 @@ go get github.com/haijima/cushion@latest
 
 ## How to use
 
-Example of using cushion with `database/sql`.
+Example of using `cushion` with `database/sql`.
 
 ```go
 var db *sql.DB
